@@ -41,3 +41,5 @@ dependencies {
     // Displaying images
     compile 'com.github.bumptech.glide:glide:3.6.1'
 }
+
+apply plugin: 'com.google.gms.google-services'
