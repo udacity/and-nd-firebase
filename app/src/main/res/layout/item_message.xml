@@ -3,7 +3,6 @@
               xmlns:tools="http://schemas.android.com/tools"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:layout_marginLeft="@dimen/activity_horizontal_margin"
               android:layout_marginStart="@dimen/activity_horizontal_margin"
               android:orientation="vertical">
 
@@ -11,7 +10,8 @@
         android:id="@+id/photoImageView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:adjustViewBounds="true" />
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/photo_image_view"/>
 
     <TextView
         android:id="@+id/messageTextView"
