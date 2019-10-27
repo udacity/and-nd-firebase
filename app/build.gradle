@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
 
 repositories {
     mavenLocal()
@@ -33,6 +34,7 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.google.firebase:firebase-database:16.0.4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
 
 //    implementation 'com.android.support:design:24.2.0'
