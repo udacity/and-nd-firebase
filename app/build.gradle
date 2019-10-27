@@ -44,4 +44,10 @@ dependencies {
     // Displaying images
     implementation 'com.github.bumptech.glide:glide:4.10.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.10.0'
+
+    // Firebase UI Implimentation
+
+    implementation 'com.firebaseui:firebase-ui-auth:4.3.1'
+
+
 }
