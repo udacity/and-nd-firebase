@@ -51,27 +51,22 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
-
     public static final String ANONYMOUS = "anonymous";
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
-
+    private static final String TAG = "MainActivity";
+    private static final int RC_SIGN_IN = 1;
     private ListView mMessageListView;
     private MessageAdapter mMessageAdapter;
     private ProgressBar mProgressBar;
     private ImageButton mPhotoPickerButton;
     private EditText mMessageEditText;
     private Button mSendButton;
-
     private String mUsername;
-
     private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mMessagesDatabaseReference;
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
     private FirebaseAuth.AuthStateListener mAuthStateListener;
-
-    private static final int RC_SIGN_IN = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Firebase components
         mFirebaseDatabase = FirebaseDatabase.getInstance();
         mFirebaseAuth = FirebaseAuth.getInstance();
-
 
 
         // Initialize references to views
@@ -148,47 +142,20 @@ public class MainActivity extends AppCompatActivity {
                 mMessageEditText.setText("");
             }
         });
-        mChildEventListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
-                mMessageAdapter.add(friendlyMessage);
-            }
 
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
-
-            }
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-        };
-        mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
 
         mAuthStateListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if (user != null) {
-                    // User is signed in
-                    Toast.makeText(MainActivity.this, "You're now signed in. Welcome to FriendlyChat.", Toast.LENGTH_SHORT).show();
+                    onSignedInInitialize(user.getDisplayName());
                 } else {
-                    // User is signed out
+                    onSignOutCleanup();
                     startActivityForResult(
                             AuthUI.getInstance()
                                     .createSignInIntentBuilder()
+                                    .setIsSmartLockEnabled(false)
                                     .setAvailableProviders(Arrays.asList(
                                             new AuthUI.IdpConfig.GoogleBuilder().build(),
                                             new AuthUI.IdpConfig.EmailBuilder().build(),
@@ -212,6 +179,8 @@ public class MainActivity extends AppCompatActivity {
         if (mAuthStateListener != null) {
             mFirebaseAuth.removeAuthStateListener(mAuthStateListener);
         }
+        detachDatabaseReadListener();
+        mMessageAdapter.clear();
     }
 
     @Override
@@ -224,5 +193,59 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         return super.onOptionsItemSelected(item);
+    }
+
+    private void onSignedInInitialize(String username) {
+        mUsername = username;
+        attachDatabaseReadListener();
+
+    }
+
+    private void onSignOutCleanup() {
+        mUsername = ANONYMOUS;
+        mMessageAdapter.clear();
+        detachDatabaseReadListener();
+
+    }
+
+
+    private void attachDatabaseReadListener() {
+        if (mChildEventListener == null) {
+            mChildEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
+                    mMessageAdapter.add(friendlyMessage);
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            };
+            mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+        }
+    }
+
+    private void detachDatabaseReadListener() {
+        if (mChildEventListener != null) {
+            mMessagesDatabaseReference.removeEventListener(mChildEventListener);
+            mChildEventListener = null;
+        }
     }
 }
