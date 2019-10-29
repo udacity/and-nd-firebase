@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private static final int RC_SIGN_IN = 1;
-    private static final int RC_PHOTO_PICKER =  2;
+    private static final int RC_PHOTO_PICKER = 2;
 
     private ListView mMessageListView;
     private MessageAdapter mMessageAdapter;
@@ -117,15 +117,15 @@ public class MainActivity extends AppCompatActivity {
         mProgressBar.setVisibility(ProgressBar.INVISIBLE);
 
         // ImagePickerButton shows an image picker to upload a image for a message
-                mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                        intent.setType("image/jpeg");
-                        intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-                        startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
-                    }
-                });
+        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("image/jpeg");
+                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
+            }
+        });
 
         // Enable Send button when there's text to send
         mMessageEditText.addTextChangedListener(new TextWatcher() {
@@ -191,18 +191,17 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
 
-
-        switch (requestCode){
+        switch (requestCode) {
             case RC_SIGN_IN:
-                if (resultCode == RESULT_OK){
+                if (resultCode == RESULT_OK) {
                     Toast.makeText(this, "Signed in!", Toast.LENGTH_SHORT).show();
-                }else if (resultCode == RESULT_CANCELED){
+                } else if (resultCode == RESULT_CANCELED) {
                     Toast.makeText(this, "Sign in canceled", Toast.LENGTH_SHORT).show();
                     finish();
                 }
                 break;
             case RC_PHOTO_PICKER:
-                if (resultCode == RESULT_OK){
+                if (resultCode == RESULT_OK) {
                     Toast.makeText(this, "picker in!", Toast.LENGTH_SHORT).show();
                     Uri selectedImageUri = data.getData();
 
@@ -226,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
                         public void onComplete(@NonNull Task<Uri> task) {
                             if (task.isSuccessful()) {
                                 Uri downloadUri = task.getResult();
-                                FriendlyMessage friendlyMessage= new FriendlyMessage(null,mUsername,downloadUri.toString());
+                                FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, downloadUri.toString());
                                 mMessagesDatabaseReference.push().setValue(friendlyMessage);
                             } else {
                                 // Handle failures
@@ -241,60 +240,7 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Something Wrong", Toast.LENGTH_SHORT).show();
                 break;
         }
-
-
-//
-//
-//
-//        if (requestCode == RC_SIGN_IN) {
-//            if (resultCode == RESULT_OK) {
-//                Toast.makeText(this, "Sign In", Toast.LENGTH_SHORT).show();
-//            } else if (resultCode == RESULT_CANCELED) {
-//                Toast.makeText(this, "Sign In Canseled", Toast.LENGTH_SHORT).show();
-//                finish();
-//            }else if (requestCode == RC_PHOTO_PICKER && resultCode == RESULT_OK){
-//                Uri selectedImageUri = data.getData();
-//                StorageReference photoRef = mChatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
-//                photoRef.putFile(selectedImageUri).addOnSuccessListener(this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
-////                    @Override
-////                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-////                        mChatPhotosStorageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-////                            @Override
-////                            public void onSuccess(Uri uri) {
-////                                String url = uri.toString();
-////
-////                                //Do what you need to do with url
-////                            }
-////                        });
-////                    }
-//
-////
-//                    @Override
-//                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-//
-//                        Task<Uri> urlTask = taskSnapshot.getStorage().getDownloadUrl();
-//                        while (!urlTask.isSuccessful());
-//                        Uri downloadUrl = urlTask.getResult();
-//                        final String sdownload_url = String.valueOf(downloadUrl);
-//
-//                        FriendlyMessage friendlyMessage =
-//                                new FriendlyMessage(null,mUsername,sdownload_url);
-//                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
-//                    }
-//
-////                    @Override
-////                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-////                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
-////                        Uri downloadUrl= taskSnapshot.getMetadata().getReference().getDownloadUrl().toString();
-////
-////                        FriendlyMessage friendlyMessage =
-////                                new FriendlyMessage(null,mUsername,downloadUrl.toString());
-////                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
-////                    }
-//                });
-//            }
-//        }
-    }
+ }
 
 
     @Override
