@@ -38,6 +38,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
+import com.google.android.gms.tasks.Continuation;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -187,26 +189,111 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @androidx.annotation.Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == RC_SIGN_IN) {
-            if (resultCode == RESULT_OK) {
-                Toast.makeText(this, "Sign In", Toast.LENGTH_SHORT).show();
-            } else if (resultCode == RESULT_CANCELED) {
-                Toast.makeText(this, "Sign In Canseled", Toast.LENGTH_SHORT).show();
-                finish();
-            }else if (requestCode == RC_PHOTO_PICKER && resultCode == RESULT_OK){
-                Uri selectedImageUri = data.getData();
-                StorageReference photoRef = mChatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
-                photoRef.putFile(selectedImageUri).addOnSuccessListener(this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        Task<Uri> downloadUrl = taskSnapshot.getMetadata().getReference().getDownloadUrl();
-                        FriendlyMessage friendlyMessage =
-                                new FriendlyMessage(null,mUsername,downloadUrl.toString());
-                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
-                    }
-                });
-            }
+
+
+
+        switch (requestCode){
+            case RC_SIGN_IN:
+                if (resultCode == RESULT_OK){
+                    Toast.makeText(this, "Signed in!", Toast.LENGTH_SHORT).show();
+                }else if (resultCode == RESULT_CANCELED){
+                    Toast.makeText(this, "Sign in canceled", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+                break;
+            case RC_PHOTO_PICKER:
+                if (resultCode == RESULT_OK){
+                    Toast.makeText(this, "picker in!", Toast.LENGTH_SHORT).show();
+                    Uri selectedImageUri = data.getData();
+
+                    // Get a reference to store file at chat_photos/<FILENAME>
+                    final StorageReference photoRef = mChatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
+
+                    // Upload file to Firebase Storage
+                    photoRef.putFile(selectedImageUri)
+                            .continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                                @Override
+                                public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                                    if (!task.isSuccessful()) {
+                                        throw task.getException();
+                                    }
+
+                                    // Continue with the task to get the download URL
+                                    return photoRef.getDownloadUrl();
+                                }
+                            }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Uri> task) {
+                            if (task.isSuccessful()) {
+                                Uri downloadUri = task.getResult();
+                                FriendlyMessage friendlyMessage= new FriendlyMessage(null,mUsername,downloadUri.toString());
+                                mMessagesDatabaseReference.push().setValue(friendlyMessage);
+                            } else {
+                                // Handle failures
+                                // ...
+                            }
+                        }
+                    });
+                }
+                break;
+
+            default:
+                Toast.makeText(this, "Something Wrong", Toast.LENGTH_SHORT).show();
+                break;
         }
+
+
+//
+//
+//
+//        if (requestCode == RC_SIGN_IN) {
+//            if (resultCode == RESULT_OK) {
+//                Toast.makeText(this, "Sign In", Toast.LENGTH_SHORT).show();
+//            } else if (resultCode == RESULT_CANCELED) {
+//                Toast.makeText(this, "Sign In Canseled", Toast.LENGTH_SHORT).show();
+//                finish();
+//            }else if (requestCode == RC_PHOTO_PICKER && resultCode == RESULT_OK){
+//                Uri selectedImageUri = data.getData();
+//                StorageReference photoRef = mChatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
+//                photoRef.putFile(selectedImageUri).addOnSuccessListener(this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
+////                    @Override
+////                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+////                        mChatPhotosStorageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+////                            @Override
+////                            public void onSuccess(Uri uri) {
+////                                String url = uri.toString();
+////
+////                                //Do what you need to do with url
+////                            }
+////                        });
+////                    }
+//
+////
+//                    @Override
+//                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+//
+//                        Task<Uri> urlTask = taskSnapshot.getStorage().getDownloadUrl();
+//                        while (!urlTask.isSuccessful());
+//                        Uri downloadUrl = urlTask.getResult();
+//                        final String sdownload_url = String.valueOf(downloadUrl);
+//
+//                        FriendlyMessage friendlyMessage =
+//                                new FriendlyMessage(null,mUsername,sdownload_url);
+//                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
+//                    }
+//
+////                    @Override
+////                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+////                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
+////                        Uri downloadUrl= taskSnapshot.getMetadata().getReference().getDownloadUrl().toString();
+////
+////                        FriendlyMessage friendlyMessage =
+////                                new FriendlyMessage(null,mUsername,downloadUrl.toString());
+////                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
+////                    }
+//                });
+//            }
+//        }
     }
 
 
