@@ -2,4 +2,7 @@
     <string name="app_name">Friendly Chat</string>
     <string name="sign_out">Sign Out</string>
     <string name="send_button_label">Send</string>
+    <string name="please_write_your_message_here">Please Write Your Message Here.</string>
+    <string name="image_button">Image Button</string>
+    <string name="photo_image_view">Photo Image View</string>
 </resources>
