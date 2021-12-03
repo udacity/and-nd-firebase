@@ -15,8 +15,13 @@
  */
 package com.google.firebase.udacity.friendlychat;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -29,13 +34,31 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+    private static final int RC_SIGN_IN = 1;
+    private static final int RC_PHOTO_PICKER =  2;
 
     public static final String ANONYMOUS = "anonymous";
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
@@ -49,6 +72,14 @@ public class MainActivity extends AppCompatActivity {
 
     private String mUsername;
 
+    private FirebaseDatabase mfirebaseDatabase;
+    private DatabaseReference mMessagedatabaseReference;
+    private ChildEventListener mchildEventListener;
+    private FirebaseAuth mfirebaseAuth;
+    private FirebaseAuth.AuthStateListener mauthStateListener;
+    private FirebaseStorage mfirebaseStorage;
+    private StorageReference mPhotosstorageReference;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +87,14 @@ public class MainActivity extends AppCompatActivity {
 
         mUsername = ANONYMOUS;
 
+        mfirebaseDatabase=FirebaseDatabase.getInstance();
+        mfirebaseAuth=FirebaseAuth.getInstance();
+        mfirebaseStorage=FirebaseStorage.getInstance();
+
+        mMessagedatabaseReference=mfirebaseDatabase.getReference().child("messages");
+        mPhotosstorageReference=mfirebaseStorage.getReference().child("chat_photos");
+
+//        mMessagedatabaseReference.setValue("hello world");
         // Initialize references to views
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
         mMessageListView = (ListView) findViewById(R.id.messageListView);
@@ -106,8 +145,44 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 // TODO: Send messages on click
 
+                FriendlyMessage friendlyMessage=new FriendlyMessage(mMessageEditText.getText().toString(),mUsername,null);
+                mMessagedatabaseReference.push().setValue(friendlyMessage);
                 // Clear input box
                 mMessageEditText.setText("");
+            }
+        });
+
+        mauthStateListener=new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user=FirebaseAuth.getInstance().getCurrentUser();
+                if(user!=null){
+                    Toast.makeText(getApplicationContext(),"youre signed in",Toast.LENGTH_SHORT).show();
+                    onSignedInInitialized(user.getDisplayName());
+                }else{
+                    onSignedOutCleanUp();
+                    List<AuthUI.IdpConfig> providers = Arrays.asList(
+                            new AuthUI.IdpConfig.EmailBuilder().build(),
+                            new AuthUI.IdpConfig.GoogleBuilder().build());
+
+                    startActivityForResult(
+                            AuthUI.getInstance()
+                                    .createSignInIntentBuilder()
+                                    .setAvailableProviders(providers)
+                                    .setIsSmartLockEnabled(false)
+                                    .build(),
+                            RC_SIGN_IN);
+
+                }
+            }
+        };
+        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("image/*");
+//              intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                startActivityForResult(intent, RC_PHOTO_PICKER);
             }
         });
     }
@@ -119,8 +194,110 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        return super.onOptionsItemSelected(item);
+        switch (item.getItemId()) {
+            case R.id.sign_out_menu:
+                AuthUI.getInstance().signOut(this);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if(mauthStateListener!=null)
+        mfirebaseAuth.removeAuthStateListener(mauthStateListener);
+        detachDatabaselistener();
+        mMessageAdapter.clear();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==RC_SIGN_IN) {
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(getApplicationContext(), "Signed IN", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "signed out", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        }
+        if (requestCode == RC_PHOTO_PICKER && resultCode == RESULT_OK) {
+            Uri selectedImageUri = data.getData();
+            final StorageReference photoRef = mPhotosstorageReference.child("image"+selectedImageUri.getLastPathSegment());
+            photoRef.putFile(selectedImageUri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    Toast.makeText(getApplicationContext(),"uploaded",Toast.LENGTH_SHORT).show();
+                    photoRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                        @Override
+                        public void onSuccess(Uri uri) {
+                            FriendlyMessage friendlyMessage=new FriendlyMessage(null,mUsername, uri.toString());
+                            mMessagedatabaseReference.push().setValue(friendlyMessage);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mfirebaseAuth.addAuthStateListener(mauthStateListener);
+    }
+    private void onSignedInInitialized(String username){
+        mUsername=username;
+        attachdatabaselistener();
+    }
+    private void onSignedOutCleanUp(){
+        mUsername=ANONYMOUS;
+        mMessageAdapter.clear();
+        detachDatabaselistener();
+    }
+    private void attachdatabaselistener(){
+        if(mchildEventListener==null) {
+            mchildEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
+                    mMessageAdapter.add(friendlyMessage);
+
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            };
+            mMessagedatabaseReference.addChildEventListener(mchildEventListener);
+        }
+    }
+    private void detachDatabaselistener(){
+        if(mchildEventListener!=null) {
+            mMessagedatabaseReference.removeEventListener(mchildEventListener);
+            mchildEventListener = null;
+        }
+
     }
 }
